@@ -1,0 +1,9 @@
+@(ingredients: List[String])
+
+@main("Wilkom") {
+  <h1>Smolkraft!</h1>
+  <input href=@routes.HomeController.addIngredient() button="Add Ingredient">Add Ingredient</input>
+  @for(ingredient <- ingredients){
+    <li>@ingredient</li>
+  }
+}
