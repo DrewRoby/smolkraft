@@ -3,8 +3,8 @@ package models
 import scala.collection.mutable
 
 object InMemoryModel {
-  private val users = mutable.Map[String,String]("Mark" -> "pass")
-  private val tasks = mutable.Map[String, List[String]]("Mark" -> List("Make videos","eat","sleep","code"))
+  private val users = mutable.Map[String,String]("Drew" -> "pass")
+  private val items = mutable.Map[String, List[String]]("Drew" -> List("Kaolin Clay", "fragrance", "peppermint essential oil"))
 
   def validateUser(username: String, password: String): Boolean = {
     users.get(username).map(_ == password).getOrElse(false)
@@ -18,17 +18,17 @@ object InMemoryModel {
   }
 
   def getTasks(username: String): Seq[String] = {
-    tasks.get(username).getOrElse(Nil)
+    items.get(username).getOrElse(Nil)
   }
 
   def addTask(username: String, task: String): Unit = {
-    tasks(username) = task :: tasks.get(username).getOrElse(Nil)
+    items(username) = task :: items.get(username).getOrElse(Nil)
   }
 
   def removeTask(username: String, index: Int): Boolean = {
-    if (index < 0 || tasks.get(username).isEmpty || index >= tasks(username).length) false
+    if (index < 0 || items.get(username).isEmpty || index >= items(username).length) false
     else {
-      tasks(username) = tasks(username).patch(index, Nil, 1)
+      items(username) = items(username).patch(index, Nil, 1)
       true
     }
   }
