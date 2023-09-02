@@ -31,7 +31,14 @@ class HomeController @Inject()(val cc: ControllerComponents) extends AbstractCon
   }
 
   def index() = Action { implicit request: Request[AnyContent] =>
-    Ok(views.html.index())
+    //if user is not logged in, redirect to login
+    //if user is logged in, redirect to home
+    val usernameOption = request.session.get("username")
+    if (usernameOption.isDefined) {
+      Redirect(routes.HomeController.home())
+    } else {
+      Redirect(routes.HomeController.home())
+    }
   }
 
   def home() = Action { implicit request: Request[AnyContent] =>
@@ -39,7 +46,24 @@ class HomeController @Inject()(val cc: ControllerComponents) extends AbstractCon
     Ok(views.html.home(ingredients))
   }
 
-  def addIngredient() = Action { implicit request =>
-    Ok(views.html.todo())
+  def logout() = Action { implicit request =>
+    Ok(Json.toJson(true)).withNewSession
   }
+
+  def createUser() = Action { implicit request: Request[AnyContent] =>
+    request.body.asJson.map { body =>
+      Json.fromJson[UserData](body) match {
+        case JsSuccess(ud, path) =>
+          if (InMemoryModel.createUser(ud.username, ud.password)) {
+            Ok(Json.toJson(true))
+              .withSession("username" -> ud.username, "csrfToken" -> play.filters.csrf.CSRF.getToken.get.value)
+          } else {
+            Ok(Json.toJson(false))
+          }
+        case e@JsError(_) => Redirect(routes.HomeController.index())
+      }
+    }.getOrElse(Redirect(routes.HomeController.index()))
+
+  }
+
 }

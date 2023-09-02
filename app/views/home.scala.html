@@ -1,9 +1,35 @@
-@(ingredients: List[String])
+@(ingredients: List[String])(implicit request: RequestHeader, flash: Flash)
 
 @main("Wilkom") {
   <h1>Smolkraft!</h1>
-  <input href=@routes.HomeController.addIngredient() button="Add Ingredient">Add Ingredient</input>
+  <div id="login-section">
+    <br>
+    Username: <input type="text" id="loginName">
+    <br>
+    Password: <input type="password" id="loginPassword">
+    <br>
+  <button onclick="login()">Login</button><span id="login-message"></span>
+    <button onclick="showCreateUser()">New User</button>
+  </div>
+
+  <div id="create-section" hidden>
+    <br>
+    Username: <input type="text" id="createName">
+    <br>
+    Password: <input type="password" id="createPassword">
+    <br>
+    Retype Password: <input type="password" id="createRetype">
+    <br>
+    <button onclick="createUser()">Register</button>
+  </div>
+
+
+  <div id="ingredients-section" hidden>
   @for(ingredient <- ingredients){
     <li>@ingredient</li>
-  }
+    }
+  </div>
+
+<input type="hidden" id="createRoute" value="@routes.HomeController.createUser">
+<script src="@routes.Assets.versioned("javascripts/main.js")">
 }
