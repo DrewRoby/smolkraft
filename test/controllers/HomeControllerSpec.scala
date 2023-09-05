@@ -2,8 +2,8 @@ package controllers
 
 import org.scalatestplus.play._
 import org.scalatestplus.play.guice._
-import play.api.test._
 import play.api.test.Helpers._
+import play.api.test._
 
 /**
  * Add your spec here.
@@ -15,31 +15,40 @@ class HomeControllerSpec extends PlaySpec with GuiceOneAppPerTest with Injecting
 
   "HomeController GET" should {
 
-    "render the index page from a new instance of controller" in {
-      val controller = new HomeController(stubControllerComponents())
-      val home = controller.index().apply(FakeRequest(GET, "/"))
+    "redirect to /login from / in the absence of a CSRF token" in {
 
-      status(home) mustBe OK
-      contentType(home) mustBe Some("text/html")
-      contentAsString(home) must include ("Welcome to Play")
     }
 
-    "render the index page from the application" in {
-      val controller = inject[HomeController]
-      val home = controller.index().apply(FakeRequest(GET, "/"))
+    "redirect to /home from / in the presence of a CSRF token" in {
 
-      status(home) mustBe OK
-      contentType(home) mustBe Some("text/html")
-      contentAsString(home) must include ("Welcome to Play")
     }
 
-    "render the index page from the router" in {
-      val request = FakeRequest(GET, "/")
-      val home = route(app, request).get
+    "display the Home dashboard when directed to /home in the presence of a CSRF token" in {
 
-      status(home) mustBe OK
-      contentType(home) mustBe Some("text/html")
-      contentAsString(home) must include ("Welcome to Play")
+    }
+
+    "list all upcoming events for a user on the Home dashboard" in {
+
+    }
+
+    "list all scheduled goods for upcoming events on the Home dashboard" in {
+
+    }
+
+    "list all outstanding orders on the Home dashboard" in {
+
+    }
+
+    "display finished goods inventory on the Home dashboard" in {
+
+    }
+
+    "display ingredient stock on the Home dashboard" in {
+
+    }
+
+    "display the user's list of recipes on the homne dashboard" in {
+
     }
   }
 }
