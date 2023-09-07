@@ -46,4 +46,5 @@ function createUser() {
 function showCreateUser() {
   document.getElementById("create-section").hidden = false;
   document.getElementById("login-section").hidden = true;
+  document.getElementById("login-message").innerHTML = ""
 }

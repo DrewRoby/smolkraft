@@ -50,5 +50,9 @@ class HomeControllerSpec extends PlaySpec with GuiceOneAppPerTest with Injecting
     "display the user's list of recipes on the homne dashboard" in {
 
     }
+
+    "remain logged in (not redirect to the login) on page refresh" in {
+
+    }
   }
 }
