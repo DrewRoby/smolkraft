@@ -84,13 +84,14 @@ drop table if exists users;
 
 create table users (
   user_id serial primary key,
-  user_display_name varchar(60),
-  first_name varchar(30),
-  last_name varchar(30),
-  email_primary varchar(60),
+  user_display_name varchar(60) not null,
+  password varchar(255) not null,
+  first_name varchar(30) not null,
+  last_name varchar(30) not null,
+  email_primary varchar(60) not null,
   email_secondary varchar(60),
-  created_at timestamp,
-  updated_at timestamp
+  created_at timestamp not null,
+  updated_at timestamp not null
 );
 
 drop table if exists instruction_set;

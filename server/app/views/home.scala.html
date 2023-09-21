@@ -1,0 +1,15 @@
+@(ingredients: List[String])(implicit request: RequestHeader, flash: Flash)
+
+@main("Wilkom") {
+  <h1>Smolkraft!</h1>
+
+
+  <div id="ingredients-section" hidden>
+  @for(ingredient <- ingredients){
+    <li>@ingredient</li>
+    }
+  </div>
+
+<input type="hidden" id="createRoute" value="@routes.HomeController.createUser">
+<script src="@routes.Assets.versioned("javascripts/main.js")">
+}
