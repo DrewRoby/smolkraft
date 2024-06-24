@@ -45,27 +45,27 @@ class OrderHeader(BaseTable):
     cost_discount = models.DecimalField(max_digits=10, decimal_places=2)
     cost_total = models.DecimalField(max_digits=10, decimal_places=2)
     item_count = models.IntegerField()
-    vendor_id = models.ForeignKey(Vendor, on_delete=models.PROTECT())
+    vendor_id = models.ForeignKey(Vendor, on_delete=models.PROTECT)
     vendor_order_id = models.CharField(max_length=128)
     order_date = models.DateField()
 
 
+class RawMaterial(BaseTable):
+    raw_material_id = models.IntegerField(primary_key=True)
+    raw_material_description = models.CharField(max_length=512)
+    raw_material_short_name = models.CharField(max_length=64)
+
+
 class OrderLineItem(BaseTable):
     order_line_item_id = models.IntegerField(primary_key=True)
-    order_header_id = models.ForeignKey(OrderHeader, on_delete=models.PROTECT())
-    raw_material_id = models.ForeignKey(RawMaterial, on_delete=models.PROTECT())
+    order_header_id = models.ForeignKey(OrderHeader, on_delete=models.PROTECT)
+    raw_material_id = models.ForeignKey(RawMaterial, on_delete=models.PROTECT)
     item_count = models.IntegerField()
     sku = models.CharField(max_length=128)
     upc = models.CharField(max_length=128)
     unit_price = models.DecimalField(max_digits=10, decimal_places=2)
     unit_amount = models.DecimalField(max_digits=12, decimal_places=4)
     unit_uom = models.CharField(max_length=4, choices=UNITS_OF_MEASURE)
-    
-
-class RawMaterial(BaseTable):
-    raw_material_id = models.IntegerField(primary_key=True)
-    raw_material_description = models.CharField(max_length=512)
-    raw_material_short_name = models.CharField(max_length=64)
 
 
 class RecipeHeader(BaseTable):
@@ -78,8 +78,8 @@ class RecipeHeader(BaseTable):
 
 class RecipeCost(BaseTable):
     recipe_cost_id = models.IntegerField(primary_key=True)
-    recipe_header_id = models.ForeignKey(RecipeHeader, on_delete=models.CASCADE())
-    raw_material_id = models.ForeignKey(RawMaterial, on_delete=models.PROTECT())
+    recipe_header_id = models.ForeignKey(RecipeHeader, on_delete=models.CASCADE)
+    raw_material_id = models.ForeignKey(RawMaterial, on_delete=models.PROTECT)
     recipe_amount = models.DecimalField(max_digits=12, decimal_places=4)
     recipe_uom = models.CharField(max_length=4, choices=UNITS_OF_MEASURE)
 
