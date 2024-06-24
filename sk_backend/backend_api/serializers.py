@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from backend_api.models import Vendor, OrderHeader, OrderLineItem, RawMaterial, RecipeHeader, RecipeCost
+from backend_api.models import Vendor, OrderHeader, OrderLineItem, RawMaterial, RecipeHeader, RecipeCost, Batch, RecipeItem, Instruction, InstructionSet, CurrentStock
 
 
 class VendorSerializer(serializers.ModelSerializer):
@@ -35,4 +35,34 @@ class RecipeHeaderSerializer(serializers.ModelSerializer):
 class RecipeCostSerializer(serializers.ModelSerializer):
     class Meta:
         model = RecipeCost
+        fields = '__all__'
+
+
+class CurrentStockSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CurrentStock
+        fields = '__all__'
+
+
+class BatchSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Batch
+        fields = '__all__'
+
+
+class RecipeItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RecipeItem
+        fields = '__all__'
+
+
+class InstructionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Instruction
+        fields = '__all__'
+
+
+class InstructionSetSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InstructionSet
         fields = '__all__'
