@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 
+
 UNITS_OF_MEASURE = {
     'PC': 'Piece',
     'UNIT': 'Unit',
@@ -24,9 +25,15 @@ UNITS_OF_MEASURE = {
 
 
 class BaseTable(models.Model):
-    insert_user = models.CharField(max_length=128)
+    # insert_user = models.CharField(max_length=128)
+    #NOTE: related_name='+' disables reversing for this field to avoid reverse accessor clashes.
+    # https://docs.djangoproject.com/en/3.2/ref/models/fields/#django.db.models.ForeignKey.related_name
+    # https://docs.djangoproject.com/en/3.2/topics/db/queries/#backwards-related-objects
+    # Remember this in case everything goes tits up when you start trying to access information for a given user.
+    insert_user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='+', on_delete=models.CASCADE)
     insert_dttm = models.DateTimeField(auto_now_add=True)
-    update_user = models.CharField(max_length=128)
+    # update_user = models.CharField(max_length=128)
+    update_user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='+', on_delete=models.CASCADE)
     update_dttm = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -38,6 +45,7 @@ class Vendor(BaseTable):
 
 
 class OrderHeader(BaseTable):
+    owner_user_id = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='+', on_delete=models.CASCADE)
     cost_subtotal = models.DecimalField(max_digits=10, decimal_places=2)
     cost_tax = models.DecimalField(max_digits=10, decimal_places=2)
     cost_shipping = models.DecimalField(max_digits=10, decimal_places=2)
@@ -48,6 +56,11 @@ class OrderHeader(BaseTable):
     vendor_order_id = models.CharField(max_length=128)
     order_date = models.DateField()
 
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['owner_user_id', 'cost_total', 'vendor'], name='unique_order_header_per_user_vendor_cost')
+        ]
+
 
 class RawMaterial(BaseTable):
     raw_material_description = models.CharField(max_length=512)
@@ -55,11 +68,12 @@ class RawMaterial(BaseTable):
 
 
 class OrderLineItem(BaseTable):
+    owner_user_id = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     order_header = models.ForeignKey(OrderHeader, on_delete=models.PROTECT)
     raw_material = models.ForeignKey(RawMaterial, on_delete=models.PROTECT)
     item_count = models.IntegerField()
-    sku = models.CharField(max_length=128)
-    upc = models.CharField(max_length=128)
+    sku = models.CharField(max_length=128, blank=True)
+    upc = models.CharField(max_length=128, blank=True)
     unit_price = models.DecimalField(max_digits=10, decimal_places=2)
     unit_amount = models.DecimalField(max_digits=12, decimal_places=4)
     unit_uom = models.CharField(max_length=4, choices=UNITS_OF_MEASURE)
