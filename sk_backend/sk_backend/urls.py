@@ -19,17 +19,15 @@ from django.urls import path, include
 from backend_api import views
 from rest_framework.routers import DefaultRouter
 
-router = DefaultRouter()
-router.register('vendors', views.VendorViewSet)
-router.register('orderheader', views.OrderHeaderViewSet)
-router.register('orderlineitem', views.OrderLineItemViewSet)
-router.register('rawmaterial', views.RawMaterialViewSet)
-router.register('recipeheader', views.RecipeHeaderViewSet)
-router.register('recipecost', views.RecipeCostViewSet)
+apiRouter = DefaultRouter()
+apiRouter.register('vendors', views.VendorViewSet)
+apiRouter.register('orderheader', views.OrderHeaderViewSet)
+apiRouter.register('orderlineitem', views.OrderLineItemViewSet)
+apiRouter.register('rawmaterial', views.RawMaterialViewSet)
+apiRouter.register('recipeheader', views.RecipeHeaderViewSet)
+apiRouter.register('recipeamount', views.RecipeAmountViewSet)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/', include(router.urls)),
+    path('api/', include(apiRouter.urls)),
 ]
-
-

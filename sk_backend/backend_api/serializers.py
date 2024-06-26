@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from backend_api.models import Vendor, OrderHeader, OrderLineItem, RawMaterial, RecipeHeader, RecipeCost, Batch, RecipeItem, Instruction, InstructionSet, CurrentStock
+from backend_api.models import Vendor, OrderHeader, OrderLineItem, RawMaterial, RecipeHeader, RecipeAmount, Batch, RecipeItem, Instruction, InstructionSet, CurrentStock
 
 
 # class DynamicFieldsModelSerializer(serializers.ModelSerializer):
@@ -53,10 +53,24 @@ class RecipeHeaderSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class RecipeCostSerializer(serializers.ModelSerializer):
+# class IngredientNameSubSer(serializers.ModelSerializer):
+#     class Meta:
+#         model = RawMaterial
+#         fields = ['raw_materal_short_name']
+
+class RecipeAmountSerializer(serializers.ModelSerializer):
+    ingredients = RawMaterialSerializer(many=True, read_only=True)
+
+    # ingredient_name = serializers.SlugRelatedField(
+    #     many=False,
+    #     read_only=True,
+    #     slug_field='raw_material'
+    # )
+
     class Meta:
-        model = RecipeCost
-        fields = '__all__'
+        model = RecipeAmount
+        fields = ['id', 'recipe_amount', 'recipe_amount_uom', 'ingredients']
+        # fields = '__all__'
 
 
 class CurrentStockSerializer(serializers.ModelSerializer):

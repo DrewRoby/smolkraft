@@ -7,7 +7,7 @@ UNITS_OF_MEASURE = {
     'CL': 'Centiliter',
     'CM': 'Centimeter',
     'DL': 'Deciliter',
-    'FLOZ': 'Fluid Ounce',
+    'FLOZ': 'Fluid Ounce (volume)',
     'G': 'Gram',
     'IN': 'Inch',
     'KG': 'Kilogram',
@@ -17,7 +17,7 @@ UNITS_OF_MEASURE = {
     'MG': 'Milligram',
     'ML': 'Milliliter',
     'MM': 'Millimeter',
-    'OZ': 'Ounce',
+    'OZ': 'Dry Ounce (weight)',
     'PC': 'Piece',
     'TBSP': 'Tablespoon',
     'THOU': 'Thousandth-inch',
@@ -62,7 +62,7 @@ class OrderHeader(BaseTable):
 # Unique compound key constraint
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=['owner_user_id', 'cost_total', 'vendor'],
+            models.UniqueConstraint(fields=['owner_user_id', 'vendor', 'cost_total'],
                                     name='unique_order_header_per_user_vendor_cost')
         ]
 
@@ -78,7 +78,8 @@ class RecipeHeader(BaseTable):
 class RawMaterial(BaseTable):
     raw_material_description = models.CharField(max_length=512)
     raw_material_short_name = models.CharField(max_length=64)
-    recipe_header_id = models.ForeignKey(RecipeHeader, on_delete=models.CASCADE, null=True)
+    recipe_header_id = models.ForeignKey(RecipeHeader, on_delete=models.CASCADE, null=True,
+                                         help_text="Use this field if one of your recipes is a raw material ingredient for a subsequent recipe (e.g. making a frosting to put on a cake)")
 
 
 class OrderLineItem(BaseTable):
@@ -115,10 +116,10 @@ class Batch(BaseTable):
     yield_count = models.PositiveSmallIntegerField()
 
 
-class RecipeCost(BaseTable):
+class RecipeAmount(BaseTable):
     recipe_header = models.ForeignKey(RecipeHeader, on_delete=models.CASCADE)
     raw_material = models.ForeignKey(RawMaterial, on_delete=models.PROTECT)
-    recipe_amount = models.DecimalField(max_digits=12, decimal_places=4)
+    recipe_amount = models.DecimalField(max_digits=14, decimal_places=6)
     recipe_amount_uom = models.CharField(max_length=4, choices=UNITS_OF_MEASURE)
 
 
