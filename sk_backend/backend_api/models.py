@@ -3,24 +3,27 @@ from django.conf import settings
 
 
 UNITS_OF_MEASURE = {
-    'PC': 'Piece',
-    'UNIT': 'Unit',
-    'LB': 'Pound',
-    'OZ': 'Ounce',
-    'FLOZ': 'Fluid Ounce',
-    'YD': 'Yard',
-    'IN': 'Inch',
-    'THOU': 'Thousandth-inch',
-    'G': 'Gram',
-    'KG': 'Kilogram',
-    'MG': 'Milligram',
-    'M': 'Meter',
-    'CM': 'Centimeter',
-    'MM': 'Millimeter',
-    'L': 'Liter',
-    'ML': 'Milliliter',
+    'C': 'Cup',
     'CL': 'Centiliter',
+    'CM': 'Centimeter',
     'DL': 'Deciliter',
+    'FLOZ': 'Fluid Ounce',
+    'G': 'Gram',
+    'IN': 'Inch',
+    'KG': 'Kilogram',
+    'L': 'Liter',
+    'LB': 'Pound',
+    'M': 'Meter',
+    'MG': 'Milligram',
+    'ML': 'Milliliter',
+    'MM': 'Millimeter',
+    'OZ': 'Ounce',
+    'PC': 'Piece',
+    'TBSP': 'Tablespoon',
+    'THOU': 'Thousandth-inch',
+    'TSP': 'Teaspoon',
+    'UNIT': 'Unit',
+    'YD': 'Yard',
 }
 
 
@@ -56,15 +59,26 @@ class OrderHeader(BaseTable):
     vendor_order_id = models.CharField(max_length=128)
     order_date = models.DateField()
 
+# Unique compound key constraint
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=['owner_user_id', 'cost_total', 'vendor'], name='unique_order_header_per_user_vendor_cost')
+            models.UniqueConstraint(fields=['owner_user_id', 'cost_total', 'vendor'],
+                                    name='unique_order_header_per_user_vendor_cost')
         ]
+
+
+class RecipeHeader(BaseTable):
+    owner_user_id = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    recipe_name = models.CharField(max_length=64)
+    recipe_description = models.CharField(max_length=256)
+    yield_amount = models.DecimalField(max_digits=12, decimal_places=4)
+    yield_uom = models.CharField(max_length=4, choices=UNITS_OF_MEASURE)
 
 
 class RawMaterial(BaseTable):
     raw_material_description = models.CharField(max_length=512)
     raw_material_short_name = models.CharField(max_length=64)
+    recipe_header_id = models.ForeignKey(RecipeHeader, on_delete=models.CASCADE, null=True)
 
 
 class OrderLineItem(BaseTable):
@@ -77,14 +91,6 @@ class OrderLineItem(BaseTable):
     unit_price = models.DecimalField(max_digits=10, decimal_places=2)
     unit_amount = models.DecimalField(max_digits=12, decimal_places=4)
     unit_uom = models.CharField(max_length=4, choices=UNITS_OF_MEASURE)
-
-
-class RecipeHeader(BaseTable):
-    owner_user_id = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    recipe_name = models.CharField(max_length=64)
-    recipe_description = models.CharField(max_length=256)
-    yield_amount = models.DecimalField(max_digits=12, decimal_places=4)
-    yield_uom = models.CharField(max_length=4, choices=UNITS_OF_MEASURE)
 
 
 class InstructionSet(BaseTable):
@@ -113,7 +119,7 @@ class RecipeCost(BaseTable):
     recipe_header = models.ForeignKey(RecipeHeader, on_delete=models.CASCADE)
     raw_material = models.ForeignKey(RawMaterial, on_delete=models.PROTECT)
     recipe_amount = models.DecimalField(max_digits=12, decimal_places=4)
-    recipe_uom = models.CharField(max_length=4, choices=UNITS_OF_MEASURE)
+    recipe_amount_uom = models.CharField(max_length=4, choices=UNITS_OF_MEASURE)
 
 
 class CurrentStock(BaseTable):

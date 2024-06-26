@@ -23,6 +23,9 @@ router = DefaultRouter()
 router.register('vendors', views.VendorViewSet)
 router.register('orderheader', views.OrderHeaderViewSet)
 router.register('orderlineitem', views.OrderLineItemViewSet)
+router.register('rawmaterial', views.RawMaterialViewSet)
+router.register('recipeheader', views.RecipeHeaderViewSet)
+router.register('recipecost', views.RecipeCostViewSet)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
