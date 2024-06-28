@@ -30,4 +30,6 @@ apiRouter.register('recipeamount', views.RecipeAmountViewSet)
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include(apiRouter.urls)),
+    # path('api/recipeamount/', views.RecipeAmountListView.as_view()),
+    # path('api/recipeamount/<int:pk>', views.RecipeAmountDetailView.as_view()),
 ]

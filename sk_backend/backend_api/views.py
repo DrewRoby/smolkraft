@@ -1,7 +1,9 @@
 from django.shortcuts import render
 from backend_api.models import Vendor, OrderHeader, OrderLineItem, RawMaterial, RecipeHeader, RecipeAmount
-from backend_api.serializers import VendorSerializer, OrderHeaderSerializer, OrderLineItemSerializer, RawMaterialSerializer, RecipeHeaderSerializer, RecipeAmountSerializer
-from rest_framework import viewsets, status, filters
+from backend_api.serializers import VendorSerializer, OrderHeaderSerializer, \
+    OrderLineItemSerializer, RawMaterialSerializer, RecipeHeaderSerializer, \
+    RecipeAmountSerializer, RawMaterialNameSubSerializer
+from rest_framework import viewsets, status, filters, generics
 from rest_framework.decorators import api_view
 
 
@@ -31,6 +33,15 @@ class RawMaterialViewSet(viewsets.ModelViewSet):
 class RecipeHeaderViewSet(viewsets.ModelViewSet):
     queryset = RecipeHeader.objects.all()
     serializer_class = RecipeHeaderSerializer
+
+#
+# class RecipeAmountListView(generics.ListCreateAPIView):
+#     queryset = RecipeAmount.objects.all()
+#     serializer_class = RecipeAmountSerializer
+#
+# class RecipeAmountDetailView(generics.RetrieveUpdateDestroyAPIView):
+#     queryset = RecipeAmount.objects.all()
+#     serializer_class = RecipeAmountSerializer
 
 
 class RecipeAmountViewSet(viewsets.ModelViewSet):

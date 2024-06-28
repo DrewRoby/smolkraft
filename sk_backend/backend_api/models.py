@@ -27,6 +27,11 @@ UNITS_OF_MEASURE = {
 }
 
 
+class UnitConversion(models.Model):
+    from_unit_name = models.CharField(max_length=32)
+    to_unit_name = models.CharField(max_length=32)
+    multiply_by = models.DecimalField(max_digits=16, decimal_places=10)
+
 class BaseTable(models.Model):
     # insert_user = models.CharField(max_length=128)
     #NOTE: related_name='+' disables reversing for this field to avoid reverse accessor clashes.
@@ -79,7 +84,7 @@ class RawMaterial(BaseTable):
     raw_material_description = models.CharField(max_length=512)
     raw_material_short_name = models.CharField(max_length=64)
     recipe_header_id = models.ForeignKey(RecipeHeader, on_delete=models.CASCADE, null=True,
-                                         help_text="Use this field if one of your recipes is a raw material ingredient for a subsequent recipe (e.g. making a frosting to put on a cake)")
+                                         help_text="Use this field if this raw material is made from one of your recipes (e.g. frosting for a cake).")
 
 
 class OrderLineItem(BaseTable):
@@ -126,4 +131,5 @@ class RecipeAmount(BaseTable):
 class CurrentStock(BaseTable):
     owner_user_id = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     batch = models.ForeignKey(Batch, on_delete=models.RESTRICT)
+
 

@@ -53,24 +53,24 @@ class RecipeHeaderSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-# class IngredientNameSubSer(serializers.ModelSerializer):
-#     class Meta:
-#         model = RawMaterial
-#         fields = ['raw_materal_short_name']
+class RawMaterialNameSubSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RawMaterial
+        fields = ['id', 'raw_material_short_name']
+
+
+class RecipeNameSubSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RecipeHeader
+        fields = ['id', 'recipe_name']
+
 
 class RecipeAmountSerializer(serializers.ModelSerializer):
-    ingredients = RawMaterialSerializer(many=True, read_only=True)
-
-    # ingredient_name = serializers.SlugRelatedField(
-    #     many=False,
-    #     read_only=True,
-    #     slug_field='raw_material'
-    # )
-
+    raw_material = RawMaterialNameSubSerializer(many=False, read_only=True)
+    recipe_header = RecipeNameSubSerializer(many=False, read_only=True)
     class Meta:
         model = RecipeAmount
-        fields = ['id', 'recipe_amount', 'recipe_amount_uom', 'ingredients']
-        # fields = '__all__'
+        fields = ['id', 'recipe_header', 'recipe_amount', 'recipe_amount_uom', 'raw_material']
 
 
 class CurrentStockSerializer(serializers.ModelSerializer):
