@@ -32,4 +32,5 @@ urlpatterns = [
     path('api/', include(apiRouter.urls)),
     # path('api/recipeamount/', views.RecipeAmountListView.as_view()),
     # path('api/recipeamount/<int:pk>', views.RecipeAmountDetailView.as_view()),
+    path('checkypoo/', views.myview)
 ]

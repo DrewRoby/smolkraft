@@ -1,11 +1,12 @@
 from django.shortcuts import render
-from backend_api.models import Vendor, OrderHeader, OrderLineItem, RawMaterial, RecipeHeader, RecipeAmount
+from backend_api.models import Vendor, OrderHeader, OrderLineItem, RawMaterial, RecipeHeader, RecipeAmount, RecipeItem
 from backend_api.serializers import VendorSerializer, OrderHeaderSerializer, \
     OrderLineItemSerializer, RawMaterialSerializer, RecipeHeaderSerializer, \
     RecipeAmountSerializer, RawMaterialNameSubSerializer
 from rest_framework import viewsets, status, filters, generics
 from rest_framework.decorators import api_view
-
+from django.contrib.auth.decorators import login_required
+from rest_framework.response import Response
 
 # Create your views here.
 class VendorViewSet(viewsets.ModelViewSet):
@@ -47,3 +48,12 @@ class RecipeHeaderViewSet(viewsets.ModelViewSet):
 class RecipeAmountViewSet(viewsets.ModelViewSet):
     queryset = RecipeAmount.objects.all()
     serializer_class = RecipeAmountSerializer
+
+
+# @login_required
+@api_view(['GET'])
+def myview(request):
+    # thing_in_question = RecipeItem.objects.all()
+    thing_in_question = RecipeAmount.objects.select_related()
+    serializer = RecipeAmountSerializer(thing_in_question, many=True)
+    return Response(serializer.data)

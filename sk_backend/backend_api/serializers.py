@@ -65,8 +65,19 @@ class RecipeNameSubSerializer(serializers.ModelSerializer):
         fields = ['id', 'recipe_name']
 
 
+class OrderLineItemSubSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OrderLineItem
+        fields = ['id', 'raw_material', 'unit_price', 'unit_amount', 'unit_uom']
+
+
 class RecipeAmountSerializer(serializers.ModelSerializer):
-    raw_material = RawMaterialNameSubSerializer(many=False, read_only=True)
+
+    #TODO use serializers.StringRelatedField instead of this bullshit
+    # you'll need to define the string field on the model with "def __str__(self): return f"{ self.field }"
+
+    # raw_material = RawMaterialNameSubSerializer(many=False, read_only=True)
+    raw_material = serializers.StringRelatedField()
     recipe_header = RecipeNameSubSerializer(many=False, read_only=True)
     class Meta:
         model = RecipeAmount
