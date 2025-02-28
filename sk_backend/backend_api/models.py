@@ -86,9 +86,10 @@ class RawMaterial(BaseTable):
     recipe_header_id = models.ForeignKey(RecipeHeader, on_delete=models.CASCADE, null=True,
                                          help_text="Use this field if this raw material is made from one of your recipes (e.g. frosting for a cake).")
 
+class RawishMaterial(RawMaterial):
     def __str__(self):
-        return f"{ self.raw_material_short_name }"
-
+        return f"{ self.raw_material_short_name }, { self.recipe_header_id }"
+``
 
 class OrderLineItem(BaseTable):
     owner_user_id = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
