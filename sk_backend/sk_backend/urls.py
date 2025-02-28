@@ -1,0 +1,36 @@
+"""
+URL configuration for sk_backend project.
+
+The `urlpatterns` list routes URLs to views. For more information please see:
+    https://docs.djangoproject.com/en/5.0/topics/http/urls/
+Examples:
+Function views
+    1. Add an import:  from my_app import views
+    2. Add a URL to urlpatterns:  path('', views.home, name='home')
+Class-based views
+    1. Add an import:  from other_app.views import Home
+    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
+Including another URLconf
+    1. Import the include() function: from django.urls import include, path
+    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
+"""
+from django.contrib import admin
+from django.urls import path, include
+from backend_api import views
+from rest_framework.routers import DefaultRouter
+
+apiRouter = DefaultRouter()
+apiRouter.register('vendors', views.VendorViewSet)
+apiRouter.register('orderheader', views.OrderHeaderViewSet)
+apiRouter.register('orderlineitem', views.OrderLineItemViewSet)
+apiRouter.register('rawmaterial', views.RawMaterialViewSet)
+apiRouter.register('recipeheader', views.RecipeHeaderViewSet)
+apiRouter.register('recipeamount', views.RecipeAmountViewSet)
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('api/', include(apiRouter.urls)),
+    # path('api/recipeamount/', views.RecipeAmountListView.as_view()),
+    # path('api/recipeamount/<int:pk>', views.RecipeAmountDetailView.as_view()),
+    path('checkypoo/', views.myview)
+]
