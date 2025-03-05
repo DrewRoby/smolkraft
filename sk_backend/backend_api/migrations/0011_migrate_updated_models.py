@@ -2,6 +2,30 @@ from django.db import migrations, models
 import django.db.models.deletion
 from django.conf import settings
 
+UNITS_OF_MEASURE = {
+    'C': 'Cup',
+    'CL': 'Centiliter',
+    'CM': 'Centimeter',
+    'DL': 'Deciliter',
+    'FLOZ': 'Fluid Ounce (volume)',
+    'G': 'Gram',
+    'IN': 'Inch',
+    'KG': 'Kilogram',
+    'L': 'Liter',
+    'LB': 'Pound',
+    'M': 'Meter',
+    'MG': 'Milligram',
+    'ML': 'Milliliter',
+    'MM': 'Millimeter',
+    'OZ': 'Dry Ounce (weight)',
+    'PC': 'Piece',
+    'TBSP': 'Tablespoon',
+    'THOU': 'Thousandth-inch',
+    'TSP': 'Teaspoon',
+    'UNIT': 'Unit',
+    'YD': 'Yard',
+}
+
 
 def migrate_data(apps, schema_editor):
     # Get model references
@@ -28,17 +52,32 @@ def migrate_data(apps, schema_editor):
     CurrentStock = apps.get_model('backend_api', 'CurrentStock')
     Inventory = apps.get_model('backend_api', 'Inventory')
 
-    # Step 1: Migrate RecipeHeader → BOMHeader
+    User = apps.get_model('auth', 'User')
+
+    # Get a default user (or create one if needed)
+    default_user = User.objects.first()
+    if not default_user:
+        # This is a fallback in case no users exist
+        default_user = User.objects.create(username='migration_user')
+
     bom_mapping = {}
     for recipe in RecipeHeader.objects.all():
+        owner = default_user
+        if hasattr(recipe, 'owner_user_id'):
+            try:
+                owner_id = recipe.owner_user_id.id if hasattr(recipe.owner_user_id, 'id') else recipe.owner_user_id
+                owner = User.objects.get(id=owner_id)
+            except (User.DoesNotExist, AttributeError):
+                pass
+
         bom = BOMHeader.objects.create(
-            owner_user_id=recipe.owner_user_id,
+            owner_user_id=owner,
             product_name=recipe.recipe_name,
             description=recipe.recipe_description,
             output_quantity=recipe.yield_amount,
             output_uom=recipe.yield_uom,
-            insert_user=recipe.insert_user,
-            update_user=recipe.update_user,
+            insert_user=default_user,
+            update_user=default_user,
         )
         bom_mapping[recipe.id] = bom.id
 
@@ -84,22 +123,24 @@ def migrate_data(apps, schema_editor):
             bomline_mapping[r_a.id] = bomline.id
 
     # Step 5: Migrate InstructionSet → BOOHeader
-    boo_header_mapping = {}
+    booheader_mapping = {}
     for i_s in InstructionSet.objects.all():
         if i_s.recipe_header_id in bom_mapping:
             bom_header = BOMHeader.objects.get(id=bom_mapping[i_s.recipe_header_id])
+
             booheader = BOOHeader.objects.create(
                 bom_header=bom_header,
                 insert_user=i_s.insert_user,
                 update_user=i_s.update_user
             )
-            boo_header_mapping[i_s.id] = booheader.id
+            booheader_mapping[i_s.id] = booheader.id
 
     # Step 6: Migrate Instruction → Operation
     operation_mapping = {}
     for instr in Instruction.objects.all():
-        if instr.instruction_set_id in boo_header_mapping:
-            boo_header = BOOHeader.objects.get(id=boo_header_mapping[instr.instruction_set_id])
+        if instr.instruction_set_id in booheader_mapping:
+            boo_header = BOOHeader.objects.get(id=booheader_mapping[instr.instruction_set_id])
+
             operation = Operation.objects.create(
                 boo_header=boo_header,
                 description=instr.instruction_text,
@@ -116,6 +157,7 @@ def migrate_data(apps, schema_editor):
     for b in Batch.objects.all():
         if b.recipe_header_id in bom_mapping:
             bom_header = BOMHeader.objects.get(id=bom_mapping[b.recipe_header_id])
+
             production_order = ProductionOrder.objects.create(
                 owner_user_id=b.owner_user_id,
                 bom_header=bom_header,
@@ -133,18 +175,23 @@ def migrate_data(apps, schema_editor):
         if hasattr(cs, 'batch') and cs.batch_id is not None and cs.batch_id in production_order_mapping:
             production_order = ProductionOrder.objects.get(id=production_order_mapping[cs.batch_id])
 
-            # Find a suitable material - this is just a basic approach
-            # You might need to adjust this based on your specific data relationships
-            default_material = Material.objects.first()
+            # Find a suitable material - using the first one from the production order's BOM
+            bom_lines = BOMLine.objects.filter(bom_header=production_order.bom_header)
+            material = None
+            if bom_lines.exists():
+                material = bom_lines.first().material
+            else:
+                # Fallback to the first material if no BOM lines
+                material = Material.objects.first()
 
-            if default_material:
+            if material:
                 inventory = Inventory.objects.create(
                     owner_user_id=cs.owner_user_id,
-                    material=default_material,
-                    quantity=1.0,  # Default quantity
-                    uom='UNIT',    # Default UOM
+                    material=material,
+                    quantity=1.0,  # Default value
+                    uom='UNIT',    # Default value
                     production_order=production_order,
-                    location='',   # Default location
+                    location='',
                     insert_user=cs.insert_user,
                     update_user=cs.update_user
                 )
@@ -168,25 +215,15 @@ class Migration(migrations.Migration):
                 ('product_name', models.CharField(max_length=64)),
                 ('description', models.CharField(max_length=256)),
                 ('output_quantity', models.DecimalField(decimal_places=4, max_digits=12)),
-                ('output_uom', models.CharField(
-                    choices=[('C', 'Cup'), ('CL', 'Centiliter'), ('CM', 'Centimeter'), ('DL', 'Deciliter'),
-                             ('FLOZ', 'Fluid Ounce (volume)'), ('G', 'Gram'), ('IN', 'Inch'), ('KG', 'Kilogram'),
-                             ('L', 'Liter'), ('LB', 'Pound'), ('M', 'Meter'), ('MG', 'Milligram'), ('ML', 'Milliliter'),
-                             ('MM', 'Millimeter'), ('OZ', 'Dry Ounce (weight)'), ('PC', 'Piece'),
-                             ('TBSP', 'Tablespoon'), ('THOU', 'Thousandth-inch'), ('TSP', 'Teaspoon'), ('UNIT', 'Unit'),
-                             ('YD', 'Yard')], max_length=4)),
-                ('insert_user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='+',
-                                                  to=settings.AUTH_USER_MODEL)),
-                ('owner_user_id',
-                 models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
-                ('update_user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='+',
-                                                  to=settings.AUTH_USER_MODEL)),
+                ('output_uom', models.CharField(max_length=4, choices=[(k, v) for k, v in UNITS_OF_MEASURE.items()])),
+                ('insert_user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='+', to=settings.AUTH_USER_MODEL)),
+                ('owner_user_id', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
+                ('update_user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='+', to=settings.AUTH_USER_MODEL)),
             ],
             options={
                 'abstract': False,
             },
         ),
-        # Create Material model
         migrations.CreateModel(
             name='Material',
             fields=[
@@ -195,32 +232,28 @@ class Migration(migrations.Migration):
                 ('update_dttm', models.DateTimeField(auto_now=True)),
                 ('description', models.CharField(max_length=512)),
                 ('short_name', models.CharField(max_length=64)),
-                ('bom_header', models.ForeignKey(blank=True,
-                                                 help_text='Link to the Bill of Materials if this item is manufactured internally.',
-                                                 null=True, on_delete=django.db.models.deletion.CASCADE,
-                                                 to='backend_api.bomheader')),
-                ('insert_user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='+',
-                                                  to=settings.AUTH_USER_MODEL)),
-                ('update_user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='+',
-                                                  to=settings.AUTH_USER_MODEL)),
+                ('insert_user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='+', to=settings.AUTH_USER_MODEL)),
+                ('update_user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='+', to=settings.AUTH_USER_MODEL)),
             ],
             options={
                 'abstract': False,
             },
         ),
-
+        # Add Material.bom_header field after BOMHeader model is created
+        migrations.AddField(
+            model_name='material',
+            name='bom_header',
+            field=models.ForeignKey(blank=True, help_text='Link to the Bill of Materials if this item is manufactured internally.', null=True, on_delete=django.db.models.deletion.CASCADE, to='backend_api.bomheader'),
+        ),
         migrations.CreateModel(
             name='BOOHeader',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('insert_dttm', models.DateTimeField(auto_now_add=True)),
                 ('update_dttm', models.DateTimeField(auto_now=True)),
-                ('bom_header',
-                 models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, to='backend_api.bomheader')),
-                ('insert_user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='+',
-                                                  to=settings.AUTH_USER_MODEL)),
-                ('update_user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='+',
-                                                  to=settings.AUTH_USER_MODEL)),
+                ('bom_header', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, to='backend_api.bomheader')),
+                ('insert_user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='+', to=settings.AUTH_USER_MODEL)),
+                ('update_user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='+', to=settings.AUTH_USER_MODEL)),
             ],
             options={
                 'abstract': False,
@@ -233,20 +266,11 @@ class Migration(migrations.Migration):
                 ('insert_dttm', models.DateTimeField(auto_now_add=True)),
                 ('update_dttm', models.DateTimeField(auto_now=True)),
                 ('quantity', models.DecimalField(decimal_places=6, max_digits=14)),
-                ('uom', models.CharField(
-                    choices=[('C', 'Cup'), ('CL', 'Centiliter'), ('CM', 'Centimeter'), ('DL', 'Deciliter'),
-                             ('FLOZ', 'Fluid Ounce (volume)'), ('G', 'Gram'), ('IN', 'Inch'), ('KG', 'Kilogram'),
-                             ('L', 'Liter'), ('LB', 'Pound'), ('M', 'Meter'), ('MG', 'Milligram'), ('ML', 'Milliliter'),
-                             ('MM', 'Millimeter'), ('OZ', 'Dry Ounce (weight)'), ('PC', 'Piece'),
-                             ('TBSP', 'Tablespoon'), ('THOU', 'Thousandth-inch'), ('TSP', 'Teaspoon'), ('UNIT', 'Unit'),
-                             ('YD', 'Yard')], max_length=4)),
-                ('bom_header',
-                 models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='backend_api.bomheader')),
-                ('insert_user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='+',
-                                                  to=settings.AUTH_USER_MODEL)),
-                ('update_user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='+',
-                                                  to=settings.AUTH_USER_MODEL)),
+                ('uom', models.CharField(max_length=4, choices=[(k, v) for k, v in UNITS_OF_MEASURE.items()])),
+                ('bom_header', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='backend_api.bomheader')),
+                ('insert_user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='+', to=settings.AUTH_USER_MODEL)),
                 ('material', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='backend_api.material')),
+                ('update_user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='+', to=settings.AUTH_USER_MODEL)),
             ],
             options={
                 'abstract': False,
@@ -262,12 +286,9 @@ class Migration(migrations.Migration):
                 ('sequence_number', models.PositiveSmallIntegerField()),
                 ('estimated_time', models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True)),
                 ('time_uom', models.CharField(blank=True, max_length=10, null=True)),
-                ('boo_header',
-                 models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='backend_api.booheader')),
-                ('insert_user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='+',
-                                                  to=settings.AUTH_USER_MODEL)),
-                ('update_user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='+',
-                                                  to=settings.AUTH_USER_MODEL)),
+                ('boo_header', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='backend_api.booheader')),
+                ('insert_user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='+', to=settings.AUTH_USER_MODEL)),
+                ('update_user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='+', to=settings.AUTH_USER_MODEL)),
             ],
             options={
                 'ordering': ['sequence_number'],
@@ -281,17 +302,11 @@ class Migration(migrations.Migration):
                 ('update_dttm', models.DateTimeField(auto_now=True)),
                 ('production_date', models.DateField()),
                 ('quantity', models.PositiveSmallIntegerField()),
-                ('status', models.CharField(
-                    choices=[('planned', 'Planned'), ('in_progress', 'In Progress'), ('completed', 'Completed'),
-                             ('cancelled', 'Cancelled')], default='planned', max_length=20)),
-                ('bom_header',
-                 models.ForeignKey(on_delete=django.db.models.deletion.RESTRICT, to='backend_api.bomheader')),
-                ('insert_user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='+',
-                                                  to=settings.AUTH_USER_MODEL)),
-                ('owner_user_id',
-                 models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
-                ('update_user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='+',
-                                                  to=settings.AUTH_USER_MODEL)),
+                ('status', models.CharField(choices=[('planned', 'Planned'), ('in_progress', 'In Progress'), ('completed', 'Completed'), ('cancelled', 'Cancelled')], default='planned', max_length=20)),
+                ('bom_header', models.ForeignKey(on_delete=django.db.models.deletion.RESTRICT, to='backend_api.bomheader')),
+                ('insert_user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='+', to=settings.AUTH_USER_MODEL)),
+                ('owner_user_id', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
+                ('update_user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='+', to=settings.AUTH_USER_MODEL)),
             ],
             options={
                 'abstract': False,
@@ -304,33 +319,23 @@ class Migration(migrations.Migration):
                 ('insert_dttm', models.DateTimeField(auto_now_add=True)),
                 ('update_dttm', models.DateTimeField(auto_now=True)),
                 ('quantity', models.DecimalField(decimal_places=6, max_digits=14)),
-                ('uom', models.CharField(
-                    choices=[('C', 'Cup'), ('CL', 'Centiliter'), ('CM', 'Centimeter'), ('DL', 'Deciliter'),
-                             ('FLOZ', 'Fluid Ounce (volume)'), ('G', 'Gram'), ('IN', 'Inch'), ('KG', 'Kilogram'),
-                             ('L', 'Liter'), ('LB', 'Pound'), ('M', 'Meter'), ('MG', 'Milligram'), ('ML', 'Milliliter'),
-                             ('MM', 'Millimeter'), ('OZ', 'Dry Ounce (weight)'), ('PC', 'Piece'),
-                             ('TBSP', 'Tablespoon'), ('THOU', 'Thousandth-inch'), ('TSP', 'Teaspoon'), ('UNIT', 'Unit'),
-                             ('YD', 'Yard')], max_length=4)),
+                ('uom', models.CharField(max_length=4, choices=[(k, v) for k, v in UNITS_OF_MEASURE.items()])),
                 ('location', models.CharField(blank=True, max_length=50)),
-                ('insert_user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='+',
-                                                  to=settings.AUTH_USER_MODEL)),
-                ('owner_user_id',
-                 models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
-                ('update_user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='+',
-                                                  to=settings.AUTH_USER_MODEL)),
+                ('insert_user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='+', to=settings.AUTH_USER_MODEL)),
                 ('material', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='backend_api.material')),
-                ('production_order',
-                 models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.RESTRICT,
-                                   to='backend_api.productionorder')),
+                ('owner_user_id', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
+                ('production_order', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.RESTRICT, to='backend_api.productionorder')),
+                ('update_user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='+', to=settings.AUTH_USER_MODEL)),
             ],
             options={
                 'abstract': False,
             },
         ),
+
         # Step 2: Run data migration to copy data from old models to new
         migrations.RunPython(migrate_data),
 
-        # Step 3: Add a temporary field for Material in OrderLineItem
+        # Step 3: Add a temporary material field for OrderLineItem
         migrations.AddField(
             model_name='orderlineitem',
             name='material',
@@ -359,10 +364,10 @@ class Migration(migrations.Migration):
         # Step 7: Delete old models after data migration
         migrations.DeleteModel(name='RecipeHeader'),
         migrations.DeleteModel(name='RawMaterial'),
-        migrations.DeleteModel(name='Batch'),
-        migrations.DeleteModel(name='CurrentStock'),
-        migrations.DeleteModel(name='Instruction'),
-        migrations.DeleteModel(name='InstructionSet'),
         migrations.DeleteModel(name='RecipeAmount'),
         migrations.DeleteModel(name='RecipeItem'),
+        migrations.DeleteModel(name='InstructionSet'),
+        migrations.DeleteModel(name='Instruction'),
+        migrations.DeleteModel(name='Batch'),
+        migrations.DeleteModel(name='CurrentStock'),
     ]
