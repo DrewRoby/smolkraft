@@ -1,36 +1,22 @@
-"""
-URL configuration for sk_backend project.
-
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/5.0/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
-"""
-from django.contrib import admin
 from django.urls import path, include
-from backend_api import views
 from rest_framework.routers import DefaultRouter
+from backend_api.views import (
+    MaterialViewSet, BOMViewSet, ProductionOrderViewSet, InventoryViewSet,
+    CurrentInventoryView, InventoryShortfallView, ProductionPossibilitiesView
+)
 
-apiRouter = DefaultRouter()
-apiRouter.register('vendors', views.VendorViewSet)
-apiRouter.register('orderheader', views.OrderHeaderViewSet)
-apiRouter.register('orderlineitem', views.OrderLineItemViewSet)
-apiRouter.register('rawmaterial', views.RawMaterialViewSet)
-apiRouter.register('recipeheader', views.RecipeHeaderViewSet)
-apiRouter.register('recipeamount', views.RecipeAmountViewSet)
+router = DefaultRouter()
+router.register(r'materials', MaterialViewSet, basename='material')
+router.register(r'boms', BOMViewSet, basename='bom')
+router.register(r'production-orders', ProductionOrderViewSet, basename='production-order')
+router.register(r'inventory', InventoryViewSet, basename='inventory')
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('api/', include(apiRouter.urls)),
-    # path('api/recipeamount/', views.RecipeAmountListView.as_view()),
-    # path('api/recipeamount/<int:pk>', views.RecipeAmountDetailView.as_view()),
-    path('checkypoo/', views.myview)
+    # Router URLs for standard CRUD endpoints
+    path('api/', include(router.urls)),
+
+    # Specialized report endpoints
+    path('api/current-inventory/', CurrentInventoryView.as_view(), name='current-inventory'),
+    path('api/inventory-shortfall/', InventoryShortfallView.as_view(), name='inventory-shortfall'),
+    path('api/production-possibilities/', ProductionPossibilitiesView.as_view(), name='production-possibilities'),
 ]
