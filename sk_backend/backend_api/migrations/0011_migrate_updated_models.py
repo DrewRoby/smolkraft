@@ -14,19 +14,19 @@ def migrate_data(apps, schema_editor):
     OrderLineItem = apps.get_model('backend_api', 'OrderLineItem')
 
     RecipeAmount = apps.get_model('backend_api', 'RecipeAmount')
-    BomLine = apps.get_model('backend_api', 'BOMLine')
+    BOMLine = apps.get_model('backend_api', 'BOMLine')
 
     InstructionSet = apps.get_model('backend_api', 'InstructionSet')
-    BooHeader = apps.get_model('backend_api', 'BooHeader')
+    BOOHeader = apps.get_model('backend_api', 'BOOHeader')
 
     Instruction = apps.get_model('backend_api', 'Instruction')
     Operation = apps.get_model('backend_api', 'Operation')
 
-    Batch = apps.get_model('backend_api', '')
-    ProductionOrder = apps.get_model('backend_api', '')
+    Batch = apps.get_model('backend_api', 'Batch')
+    ProductionOrder = apps.get_model('backend_api', 'ProductionOrder')
 
-    CurrentStock = apps.get_model('backend_api', '')
-    Inventory = apps.get_model('backend_api', '')
+    CurrentStock = apps.get_model('backend_api', 'CurrentStock')
+    Inventory = apps.get_model('backend_api', 'Inventory')
 
     # Step 1: Migrate RecipeHeader → BOMHeader
     bom_mapping = {}
@@ -66,51 +66,90 @@ def migrate_data(apps, schema_editor):
             line.raw_material_id = material_id
             line.save()
 
+    # Step 4: Migrate RecipeAmount → BOMLine
     bomline_mapping = {}
     for r_a in RecipeAmount.objects.all():
-        bomline = BomLine.objects.create(
-            bom_header=r_a.recipe_header,
-            material=r_a.raw_material,
-            quantity=r_a.recipe_amount,
-            uom=r_a.recipe_amount_uom
-        )
-        bomline_mapping[r_a.id] = bomline[id]
+        if r_a.recipe_header_id in bom_mapping and r_a.raw_material_id in material_mapping:
+            bom_header = BOMHeader.objects.get(id=bom_mapping[r_a.recipe_header_id])
+            material = Material.objects.get(id=material_mapping[r_a.raw_material_id])
 
+            bomline = BOMLine.objects.create(
+                bom_header=bom_header,
+                material=material,
+                quantity=r_a.recipe_amount,
+                uom=r_a.recipe_amount_uom,
+                insert_user=r_a.insert_user,
+                update_user=r_a.update_user
+            )
+            bomline_mapping[r_a.id] = bomline.id
+
+    # Step 5: Migrate InstructionSet → BOOHeader
     boo_header_mapping = {}
     for i_s in InstructionSet.objects.all():
-        booheader = BooHeader.objects.create(
-            bom_header=i_s.recipe_header
-        )
-        boo_header_mapping[i_s.id] = booheader[id]
+        if i_s.recipe_header_id in bom_mapping:
+            bom_header = BOMHeader.objects.get(id=bom_mapping[i_s.recipe_header_id])
+            booheader = BOOHeader.objects.create(
+                bom_header=bom_header,
+                insert_user=i_s.insert_user,
+                update_user=i_s.update_user
+            )
+            boo_header_mapping[i_s.id] = booheader.id
 
+    # Step 6: Migrate Instruction → Operation
     operation_mapping = {}
     for instr in Instruction.objects.all():
-        operation = Operation.objects.create(
-            boo_header=instr.instruction_set,
-            description=instr.instruction_text,
-            sequence_number=instr.instruction_sequence_number,
-            estimated_time=1.0,
-            time_uom='seconds'
-        )
-        operation_mapping[instr.id] = operation[id]
+        if instr.instruction_set_id in boo_header_mapping:
+            boo_header = BOOHeader.objects.get(id=boo_header_mapping[instr.instruction_set_id])
+            operation = Operation.objects.create(
+                boo_header=boo_header,
+                description=instr.instruction_text,
+                sequence_number=instr.instruction_sequence_number,
+                estimated_time=1.0,  # Default value
+                time_uom='minutes',  # Default value
+                insert_user=instr.insert_user,
+                update_user=instr.update_user
+            )
+            operation_mapping[instr.id] = operation.id
 
+    # Step 7: Migrate Batch → ProductionOrder
     production_order_mapping = {}
     for b in Batch.objects.all():
-        production_order = ProductionOrder.objects.create(
-            owner_user_id=b.owner_user_id,
-            bom_header=b.recipe_header,
-            production_date=b.batch_date,
-            quantity=b.yield_count,
-            status=''
-        )
-        production_order_mapping[b.id] = production_order[id]
+        if b.recipe_header_id in bom_mapping:
+            bom_header = BOMHeader.objects.get(id=bom_mapping[b.recipe_header_id])
+            production_order = ProductionOrder.objects.create(
+                owner_user_id=b.owner_user_id,
+                bom_header=bom_header,
+                production_date=b.batch_date,
+                quantity=b.yield_count,
+                status='completed',  # Default for existing batches
+                insert_user=b.insert_user,
+                update_user=b.update_user
+            )
+            production_order_mapping[b.id] = production_order.id
 
+    # Step 8: Migrate CurrentStock → Inventory
     inventory_mapping = {}
     for cs in CurrentStock.objects.all():
-        inventory = Inventory.objects.create(
-            owner_user_id=cs.owner_user_id
-        )
-        inventory_mapping[cs.id] = inventory[id]
+        if hasattr(cs, 'batch') and cs.batch_id is not None and cs.batch_id in production_order_mapping:
+            production_order = ProductionOrder.objects.get(id=production_order_mapping[cs.batch_id])
+
+            # Find a suitable material - this is just a basic approach
+            # You might need to adjust this based on your specific data relationships
+            default_material = Material.objects.first()
+
+            if default_material:
+                inventory = Inventory.objects.create(
+                    owner_user_id=cs.owner_user_id,
+                    material=default_material,
+                    quantity=1.0,  # Default quantity
+                    uom='UNIT',    # Default UOM
+                    production_order=production_order,
+                    location='',   # Default location
+                    insert_user=cs.insert_user,
+                    update_user=cs.update_user
+                )
+                inventory_mapping[cs.id] = inventory.id
+
 
 class Migration(migrations.Migration):
     dependencies = [
@@ -318,38 +357,12 @@ class Migration(migrations.Migration):
         ),
 
         # Step 7: Delete old models after data migration
-        # Remove all your old models here
         migrations.DeleteModel(name='RecipeHeader'),
         migrations.DeleteModel(name='RawMaterial'),
-        migrations.DeleteModel(
-            name='Batch',
-        ),
-        migrations.DeleteModel(
-            name='CurrentStock',
-        ),
-        migrations.DeleteModel(
-            name='Instruction',
-        ),
-        migrations.DeleteModel(
-            name='InstructionSet',
-        ),
-        migrations.DeleteModel(
-            name='RecipeAmount',
-        ),
-        migrations.DeleteModel(
-            name='RecipeItem',
-        ),
-        migrations.DeleteModel(
-            name='InstructionSet',
-        ),
-        migrations.DeleteModel(
-            name='Instruction',
-        ),
-        migrations.DeleteModel(
-            name='Batch',
-        ),
-        migrations.DeleteModel(
-            name='CurrentStock',
-        )
-
+        migrations.DeleteModel(name='Batch'),
+        migrations.DeleteModel(name='CurrentStock'),
+        migrations.DeleteModel(name='Instruction'),
+        migrations.DeleteModel(name='InstructionSet'),
+        migrations.DeleteModel(name='RecipeAmount'),
+        migrations.DeleteModel(name='RecipeItem'),
     ]
