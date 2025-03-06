@@ -32,8 +32,8 @@ def migrate_data(apps, schema_editor):
     RawMaterial = apps.get_model('backend_api', 'RawMaterial')
     Material = apps.get_model('backend_api', 'Material')
 
-    RecipeHeader = apps.get_model('backend_api', 'RecipeHeader')
-    BOMHeader = apps.get_model('backend_api', 'BOMHeader')
+    # RecipeHeader = apps.get_model('backend_api', 'RecipeHeader')
+    # BOMHeader = apps.get_model('backend_api', 'BOMHeader')
 
     OrderLineItem = apps.get_model('backend_api', 'OrderLineItem')
 
@@ -60,27 +60,27 @@ def migrate_data(apps, schema_editor):
         # This is a fallback in case no users exist
         default_user = User.objects.create(username='migration_user')
 
-    bom_mapping = {}
-    for recipe in RecipeHeader.objects.all():
-        owner = default_user
-        if hasattr(recipe, 'owner_user_id'):
-            try:
-                owner_id = recipe.owner_user_id.id if hasattr(recipe.owner_user_id, 'id') else recipe.owner_user_id
-                owner = User.objects.get(id=owner_id)
-            except (User.DoesNotExist, AttributeError):
-                pass
-
-        bom = BOMHeader.objects.create(
-            owner_user_id=owner,
-            product_name=recipe.recipe_name,
-            description=recipe.recipe_description,
-            output_quantity=recipe.yield_amount,
-            output_uom=recipe.yield_uom,
-            insert_user=default_user,
-            update_user=default_user,
-        )
-        bom_mapping[recipe.id] = bom.id
-
+    # bom_mapping = {}
+    # for recipe in RecipeHeader.objects.all():
+    #     owner = default_user
+    #     if hasattr(recipe, 'owner_user_id'):
+    #         try:
+    #             owner_id = recipe.owner_user_id.id if hasattr(recipe.owner_user_id, 'id') else recipe.owner_user_id
+    #             owner = User.objects.get(id=owner_id)
+    #         except (User.DoesNotExist, AttributeError):
+    #             pass
+    #
+    #     bom = BOMHeader.objects.create(
+    #         owner_user_id=owner,
+    #         product_name=recipe.recipe_name,
+    #         description=recipe.recipe_description,
+    #         output_quantity=recipe.yield_amount,
+    #         output_uom=recipe.yield_uom,
+    #         insert_user=default_user,
+    #         update_user=default_user,
+    #     )
+    #     bom_mapping[recipe.id] = bom.id
+    #
     # Step 2: Migrate RawMaterial → Material
     material_mapping = {}
     for rm in RawMaterial.objects.all():
@@ -362,7 +362,7 @@ class Migration(migrations.Migration):
         ),
 
         # Step 7: Delete old models after data migration
-        migrations.DeleteModel(name='RecipeHeader'),
+        # migrations.DeleteModel(name='RecipeHeader'),
         migrations.DeleteModel(name='RawMaterial'),
         migrations.DeleteModel(name='RecipeAmount'),
         migrations.DeleteModel(name='RecipeItem'),
