@@ -1,5 +1,8 @@
 from rest_framework import viewsets, views, permissions
 from rest_framework.response import Response
+from rest_framework import status
+from django.contrib.auth import authenticate, login
+
 from .models import (
     BOMHeader, BOMLine, BOOHeader, Operation, Material,
     ProductionOrder, Inventory, OrderHeader, OrderLineItem
@@ -9,6 +12,20 @@ from .serializers import (
     InventorySerializer, CurrentInventorySerializer, ShortfallSerializer,
     ProductionPossibilitySerializer, MaterialSerializer
 )
+
+class LoginView(views.APIView):
+    permission_classes = []
+
+    def post(self, request):
+        username = request.data.get('username')
+        password = request.data.get('password')
+        user = authenticate(username=username, password=password)
+
+        if user:
+            login(request, user)
+            return Response({'message': 'Login succful'})
+        else:
+            return Response({'message': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 
 # Basic viewsets for CRUD operations
 class MaterialViewSet(viewsets.ModelViewSet):
